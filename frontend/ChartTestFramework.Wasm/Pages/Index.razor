@@ -1,0 +1,221 @@
+@page "/"
+@using System.Diagnostics
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject PerformanceLogger PerfLogger
+@inject Func<string, IChartAdapter> AdapterFactory
+
+<div class="dashboard">
+    <div class="controls-panel">
+        <div class="control-group">
+            <label>Chart Library</label>
+            <select @bind="selectedLibrary" disabled="@isRunning">
+                <optgroup label="Browser JS Rendering">
+                    <option value="ECharts">Apache ECharts</option>
+                    <option value="Syncfusion">Syncfusion Charts</option>
+                </optgroup>
+                <optgroup label="🚀 GPU Accelerated (WebGL)">
+                    <option value="EChartsGL">ECharts-GL (WebGL)</option>
+                    <option value="DeckGL">Deck.gl (WebGL)</option>
+                </optgroup>
+            </select>
+        </div>
+        
+        <div class="control-group">
+            <label>Weeks</label>
+            <input type="number" @bind="weeks" min="1" max="52" disabled="@isRunning" />
+        </div>
+        
+        <div class="control-group">
+            <label>Lots per Week</label>
+            <input type="number" @bind="lotsPerWeek" min="1" max="100" disabled="@isRunning" />
+        </div>
+        
+        <div class="control-group">
+            <label>Wafers per Lot</label>
+            <input type="number" @bind="wafersPerLot" min="1" max="25" disabled="@isRunning" />
+        </div>
+        
+        <div class="control-group">
+            <label>Estimated Data Points</label>
+            <div style="padding: 0.75rem; font-weight: bold; color: var(--accent-wasm);">
+                @((weeks * lotsPerWeek * wafersPerLot).ToString("N0"))
+            </div>
+        </div>
+        
+        <div class="control-group" style="justify-content: flex-end;">
+            <button class="btn btn-primary" @onclick="RunTest" disabled="@isRunning">
+                @if (isRunning)
+                {
+                    <span class="spinner"></span>
+                    <span> Running...</span>
+                }
+                else
+                {
+                    <span>▶ Run Test</span>
+                }
+            </button>
+        </div>
+    </div>
+    
+    <div class="chart-section">
+        <h2>📈 Box Plot Visualization (WASM)</h2>
+        <div id="chart-container" class="chart-container"></div>
+        
+        @if (selectedPoints.Any())
+        {
+            <div class="selection-info">
+                <h4>🎯 Selected Points</h4>
+                <p>@selectedPoints.Count data points selected</p>
+            </div>
+        }
+    </div>
+    
+    <div class="metrics-section">
+        <h2>⚡ Performance Metrics (Client-Side Rendering)</h2>
+        
+        @if (currentResult != null)
+        {
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="label">Data Points</div>
+                    <div class="value">@currentResult.DataPoints.ToString("N0")</div>
+                </div>
+                <div class="metric-card">
+                    <div class="label">Server Total</div>
+                    <div class="value server">@currentResult.ServerTotalMs.ToString("F1")</div>
+                    <div class="unit">ms</div>
+                </div>
+                <div class="metric-card">
+                    <div class="label">Fetch Time</div>
+                    <div class="value client">@currentResult.FetchTimeMs.ToString("F1")</div>
+                    <div class="unit">ms</div>
+                </div>
+                <div class="metric-card">
+                    <div class="label">Parse Time</div>
+                    <div class="value client">@currentResult.ParseTimeMs.ToString("F1")</div>
+                    <div class="unit">ms</div>
+                </div>
+                <div class="metric-card">
+                    <div class="label">Render Time</div>
+                    <div class="value client">@currentResult.RenderCompleteMs.ToString("F1")</div>
+                    <div class="unit">ms</div>
+                </div>
+                <div class="metric-card">
+                    <div class="label">End-to-End</div>
+                    <div class="value">@currentResult.TotalEndToEndMs.ToString("F1")</div>
+                    <div class="unit">ms</div>
+                </div>
+            </div>
+        }
+        
+        <h3 style="margin-top: 1.5rem; margin-bottom: 1rem;">📋 Test History</h3>
+        
+        @if (PerfLogger.GetResults().Any())
+        {
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Test ID</th>
+                        <th>Library</th>
+                        <th>Data Points</th>
+                        <th>Server (ms)</th>
+                        <th>Fetch (ms)</th>
+                        <th>Render (ms)</th>
+                        <th>Total (ms)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var result in PerfLogger.GetResults().OrderByDescending(r => r.Timestamp).Take(10))
+                    {
+                        <tr>
+                            <td>@result.TestId</td>
+                            <td>@result.ChartLibrary</td>
+                            <td>@result.DataPoints.ToString("N0")</td>
+                            <td>@result.ServerTotalMs.ToString("F1")</td>
+                            <td>@result.FetchTimeMs.ToString("F1")</td>
+                            <td>@result.RenderCompleteMs.ToString("F1")</td>
+                            <td>@result.TotalEndToEndMs.ToString("F1")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p style="color: var(--text-secondary); text-align: center; padding: 2rem;">
+                No test results yet. Run a test to see performance metrics.
+            </p>
+        }
+    </div>
+</div>
+
+@code {
+    private string selectedLibrary = "ECharts";
+    private int weeks = 12;
+    private int lotsPerWeek = 10;
+    private int wafersPerLot = 20;
+    private bool isRunning = false;
+    private TestResult? currentResult;
+    private List<WaferDataPoint> selectedPoints = new();
+    private IChartAdapter? currentAdapter;
+    
+    protected override void OnInitialized()
+    {
+        PerfLogger.OnMetricsUpdated += StateHasChanged;
+    }
+    
+    private async Task RunTest()
+    {
+        isRunning = true;
+        StateHasChanged();
+        
+        try
+        {
+            // Cleanup previous adapter
+            if (currentAdapter != null)
+            {
+                await currentAdapter.DisposeAsync();
+            }
+            
+            // Create new adapter
+            currentAdapter = AdapterFactory(selectedLibrary);
+            
+            // Create test runner
+            var testRunner = new TestRunner(Http, PerfLogger, "WASM");
+            
+            // Run test
+            currentResult = await testRunner.RunTest(
+                currentAdapter,
+                "chart-container",
+                weeks,
+                lotsPerWeek,
+                wafersPerLot
+            );
+            
+            // Enable selection
+            await currentAdapter.EnableRectangularSelection(OnSelectionMade);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Test error: {ex.Message}");
+        }
+        finally
+        {
+            isRunning = false;
+            StateHasChanged();
+        }
+    }
+    
+    private void OnSelectionMade(SelectionRange range)
+    {
+        selectedPoints = range.SelectedPoints;
+        InvokeAsync(StateHasChanged);
+    }
+    
+    public void Dispose()
+    {
+        PerfLogger.OnMetricsUpdated -= StateHasChanged;
+        currentAdapter?.DisposeAsync();
+    }
+}

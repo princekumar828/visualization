@@ -1,0 +1,31 @@
+# General
+.DS_Store
+.idea/
+.vscode/
+
+# Python / Backend
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+.pytest_cache/
+backend/venv/
+
+# .NET / Frontend
+bin/
+obj/
+.vs/
+*.user
+*.suo
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Node.js
+node_modules/
+npm-debug.log
+frontend/ChartTestFramework.Server/NodeSSR/node_modules/
+
+# Agentic
+.gemini/

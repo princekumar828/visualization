@@ -1,0 +1,41 @@
+@using Microsoft.AspNetCore.Components.Web
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chart Testing Framework - Server</title>
+    <base href="/" />
+    <HeadOutlet />
+    
+    <!-- ECharts + ECharts-GL (WebGL) -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js"></script>
+    
+    <!-- Deck.gl + MapLibre (WebGL) -->
+    <script src="https://unpkg.com/deck.gl@8.9.33/dist.min.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    
+    <!-- Syncfusion CSS and JS -->
+    <link href="https://cdn.syncfusion.com/ej2/23.1.36/ej2-base/styles/material-dark.css" rel="stylesheet" />
+    <link href="https://cdn.syncfusion.com/ej2/23.1.36/ej2-charts/styles/material-dark.css" rel="stylesheet" />
+    <script src="https://cdn.syncfusion.com/ej2/23.1.36/dist/ej2.min.js"></script>
+    
+    <!-- Custom styles -->
+    <link href="css/app.css" rel="stylesheet" />
+</head>
+<body>
+    <Routes />
+    
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>
+    
+    <script src="_framework/blazor.web.js"></script>
+    <script src="js/chartInterop.js"></script>
+</body>
+</html>

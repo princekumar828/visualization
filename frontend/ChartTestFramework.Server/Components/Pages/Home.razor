@@ -1,0 +1,294 @@
+@page "/"
+@rendermode InteractiveServer
+@using System.Diagnostics
+@inject IHttpClientFactory HttpClientFactory
+@inject IJSRuntime JS
+@inject PerformanceLogger PerfLogger
+@inject Func<string, IChartAdapter> AdapterFactory
+
+<PageTitle>Chart Testing Framework</PageTitle>
+
+<div class="dashboard">
+    <div class="controls-panel">
+        <div class="control-group">
+            <label>Chart Library</label>
+            <select @bind="selectedLibrary" disabled="@isRunning">
+                <optgroup label="Browser JS Rendering">
+                    <option value="ECharts">Apache ECharts</option>
+                    <option value="Syncfusion">Syncfusion Charts</option>
+                </optgroup>
+                <optgroup label="🚀 GPU Accelerated (WebGL)">
+                    <option value="EChartsGL">ECharts-GL (WebGL)</option>
+                    <option value="DeckGL">Deck.gl (WebGL)</option>
+                </optgroup>
+                <optgroup label="🖼️ True Server Rendering (Image)">
+                    <option value="ScottPlot">ScottPlot</option>
+                    <option value="OxyPlot">OxyPlot</option>
+                    <option value="SkiaSharp">SkiaSharp</option>
+                    <option value="EChartsSSR">ECharts SSR (Node)</option>
+                </optgroup>
+            </select>
+        </div>
+        
+        <div class="control-group">
+            <label>Weeks</label>
+            <input type="number" @bind="weeks" min="1" max="52" disabled="@isRunning" />
+        </div>
+        
+        <div class="control-group">
+            <label>Lots per Week</label>
+            <input type="number" @bind="lotsPerWeek" min="1" max="100" disabled="@isRunning" />
+        </div>
+        
+        <div class="control-group">
+            <label>Wafers per Lot</label>
+            <input type="number" @bind="wafersPerLot" min="1" max="25" disabled="@isRunning" />
+        </div>
+        
+        <div class="control-group">
+            <label>Estimated Data Points</label>
+            <div style="padding: 0.75rem; font-weight: bold; color: var(--accent-primary);">
+                @((weeks * lotsPerWeek * wafersPerLot).ToString("N0"))
+            </div>
+        </div>
+        
+        <div class="control-group" style="justify-content: flex-end;">
+            <button class="btn btn-primary" @onclick="RunTest" disabled="@isRunning">
+                @if (isRunning)
+                {
+                    <span class="spinner"></span>
+                    <span> Running...</span>
+                }
+                else
+                {
+                    <span>▶ Run Test</span>
+                }
+            </button>
+        </div>
+    </div>
+    
+    <div class="chart-section">
+        <h2>📈 Box Plot Visualization</h2>
+        <div id="chart-container" class="chart-container"></div>
+        
+        @if (selectedPoints.Any())
+        {
+            <div class="selection-info">
+                <h4>🎯 Selected Points</h4>
+                <p>@selectedPoints.Count data points selected</p>
+            </div>
+        }
+    </div>
+    
+    <div class="metrics-section">
+        <h2>⚡ Performance Metrics</h2>
+        
+        @if (currentResult != null)
+        {
+            <!-- Summary Cards -->
+            <div class="metrics-grid">
+                <div class="metric-card highlight">
+                    <div class="label">📊 Data Points</div>
+                    <div class="value">@currentResult.DataPoints.ToString("N0")</div>
+                </div>
+                <div class="metric-card">
+                    <div class="label">🖥️ Server Total</div>
+                    <div class="value server">@currentResult.ServerTotalMs.ToString("F1")</div>
+                    <div class="unit">ms</div>
+                </div>
+                <div class="metric-card">
+                    <div class="label">🌐 Network</div>
+                    <div class="value client">@currentResult.FetchTimeMs.ToString("F1")</div>
+                    <div class="unit">ms</div>
+                </div>
+                <div class="metric-card">
+                    <div class="label">🎨 Render</div>
+                    <div class="value client">@currentResult.RenderCompleteMs.ToString("F1")</div>
+                    <div class="unit">ms</div>
+                </div>
+                <div class="metric-card highlight">
+                    <div class="label">⏱️ End-to-End</div>
+                    <div class="value">@currentResult.TotalEndToEndMs.ToString("F1")</div>
+                    <div class="unit">ms</div>
+                </div>
+            </div>
+            
+            <!-- Detailed Flow Timing -->
+            <div class="timing-flow" style="margin-top: 1.5rem; background: rgba(255,255,255,0.03); border-radius: 12px; padding: 1.5rem;">
+                <h3 style="margin-bottom: 1rem; color: var(--accent-primary);">📈 Detailed Flow Timing</h3>
+                
+                <div class="flow-diagram" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <!-- Server Section -->
+                    <div class="flow-section" style="border-left: 3px solid #f59e0b; padding-left: 1rem;">
+                        <div class="flow-header" style="font-weight: bold; color: #f59e0b; margin-bottom: 0.5rem;">🖥️ SERVER (FastAPI + DataGenerator)</div>
+                        <div class="flow-row" style="display: flex; justify-content: space-between; padding: 0.3rem 0;">
+                            <span>1. Array Generation</span>
+                            <span class="timing-value">@currentResult.ServerArrayGenerationMs.ToString("F2") ms</span>
+                        </div>
+                        <div class="flow-row" style="display: flex; justify-content: space-between; padding: 0.3rem 0;">
+                            <span>2. Yield Generation</span>
+                            <span class="timing-value">@currentResult.ServerYieldGenerationMs.ToString("F2") ms</span>
+                        </div>
+                        <div class="flow-row" style="display: flex; justify-content: space-between; padding: 0.3rem 0;">
+                            <span>3. DataFrame Creation</span>
+                            <span class="timing-value">@currentResult.ServerDataframeCreationMs.ToString("F2") ms</span>
+                        </div>
+                        <div class="flow-row" style="display: flex; justify-content: space-between; padding: 0.3rem 0;">
+                            <span>4. BoxPlot Transformation</span>
+                            <span class="timing-value">@currentResult.ServerTransformationMs.ToString("F2") ms</span>
+                        </div>
+                        <div class="flow-row" style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-top: 1px dashed #444; margin-top: 0.3rem; font-weight: bold;">
+                            <span>→ Server Subtotal</span>
+                            <span class="timing-value" style="color: #f59e0b;">@currentResult.ServerTotalMs.ToString("F2") ms</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Network Section -->
+                    <div class="flow-section" style="border-left: 3px solid #3b82f6; padding-left: 1rem; margin-top: 0.5rem;">
+                        <div class="flow-header" style="font-weight: bold; color: #3b82f6; margin-bottom: 0.5rem;">🌐 NETWORK (HTTP)</div>
+                        <div class="flow-row" style="display: flex; justify-content: space-between; padding: 0.3rem 0;">
+                            <span>5. HTTP Request/Response</span>
+                            <span class="timing-value" style="color: #3b82f6;">@currentResult.FetchTimeMs.ToString("F2") ms</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Client Section -->
+                    <div class="flow-section" style="border-left: 3px solid #10b981; padding-left: 1rem; margin-top: 0.5rem;">
+                        <div class="flow-header" style="font-weight: bold; color: #10b981; margin-bottom: 0.5rem;">🎨 CLIENT (@selectedLibrary)</div>
+                        <div class="flow-row" style="display: flex; justify-content: space-between; padding: 0.3rem 0;">
+                            <span>6. JSON Parse</span>
+                            <span class="timing-value">@currentResult.ParseTimeMs.ToString("F2") ms</span>
+                        </div>
+                        <div class="flow-row" style="display: flex; justify-content: space-between; padding: 0.3rem 0;">
+                            <span>7. Chart Init</span>
+                            <span class="timing-value">@currentResult.ChartInitMs.ToString("F2") ms</span>
+                        </div>
+                        <div class="flow-row" style="display: flex; justify-content: space-between; padding: 0.3rem 0;">
+                            <span>8. Data Binding</span>
+                            <span class="timing-value">@currentResult.DataBindingMs.ToString("F2") ms</span>
+                        </div>
+                        <div class="flow-row" style="display: flex; justify-content: space-between; padding: 0.3rem 0;">
+                            <span>9. Render Complete</span>
+                            <span class="timing-value">@currentResult.RenderCompleteMs.ToString("F2") ms</span>
+                        </div>
+                        <div class="flow-row" style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-top: 1px dashed #444; margin-top: 0.3rem; font-weight: bold;">
+                            <span>→ Client Subtotal</span>
+                            <span class="timing-value" style="color: #10b981;">@currentResult.TotalClientMs.ToString("F2") ms</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Total -->
+                    <div class="flow-total" style="background: linear-gradient(90deg, #3b82f6, #10b981); padding: 1rem; border-radius: 8px; margin-top: 1rem; display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: bold;">
+                        <span>⏱️ TOTAL END-TO-END</span>
+                        <span>@currentResult.TotalEndToEndMs.ToString("F2") ms</span>
+                    </div>
+                </div>
+            </div>
+        }
+        
+        <h3 style="margin-top: 1.5rem; margin-bottom: 1rem;">📋 Test History</h3>
+        
+        @if (PerfLogger.GetResults().Any())
+        {
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Test ID</th>
+                        <th>Library</th>
+                        <th>Data Points</th>
+                        <th>Server (ms)</th>
+                        <th>Fetch (ms)</th>
+                        <th>Render (ms)</th>
+                        <th>Total (ms)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var result in PerfLogger.GetResults().OrderByDescending(r => r.Timestamp).Take(10))
+                    {
+                        <tr>
+                            <td>@result.TestId</td>
+                            <td>@result.ChartLibrary</td>
+                            <td>@result.DataPoints.ToString("N0")</td>
+                            <td>@result.ServerTotalMs.ToString("F1")</td>
+                            <td>@result.FetchTimeMs.ToString("F1")</td>
+                            <td>@result.RenderCompleteMs.ToString("F1")</td>
+                            <td>@result.TotalEndToEndMs.ToString("F1")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p style="color: var(--text-secondary); text-align: center; padding: 2rem;">
+                No test results yet. Run a test to see performance metrics.
+            </p>
+        }
+    </div>
+</div>
+
+@code {
+    private string selectedLibrary = "ECharts";
+    private int weeks = 12;
+    private int lotsPerWeek = 10;
+    private int wafersPerLot = 20;
+    private bool isRunning = false;
+    private TestResult? currentResult;
+    private List<WaferDataPoint> selectedPoints = new();
+    private IChartAdapter? currentAdapter;
+    
+    protected override void OnInitialized()
+    {
+        PerfLogger.OnMetricsUpdated += StateHasChanged;
+    }
+    
+    private async Task RunTest()
+    {
+        isRunning = true;
+        StateHasChanged();
+        
+        try
+        {
+            if (currentAdapter != null)
+            {
+                await currentAdapter.DisposeAsync();
+            }
+            
+            currentAdapter = AdapterFactory(selectedLibrary);
+            
+            var httpClient = HttpClientFactory.CreateClient("ChartAPI");
+            var testRunner = new TestRunner(httpClient, PerfLogger, "Server");
+            
+            currentResult = await testRunner.RunTest(
+                currentAdapter,
+                "chart-container",
+                weeks,
+                lotsPerWeek,
+                wafersPerLot
+            );
+            
+            await currentAdapter.EnableRectangularSelection(OnSelectionMade);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Test error: {ex.Message}");
+        }
+        finally
+        {
+            isRunning = false;
+            StateHasChanged();
+        }
+    }
+    
+    private void OnSelectionMade(SelectionRange range)
+    {
+        selectedPoints = range.SelectedPoints;
+        InvokeAsync(StateHasChanged);
+    }
+    
+    public void Dispose()
+    {
+        PerfLogger.OnMetricsUpdated -= StateHasChanged;
+        currentAdapter?.DisposeAsync();
+    }
+}

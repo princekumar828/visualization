@@ -1,0 +1,9 @@
+{
+    "name": "echarts-ssr",
+    "version": "1.0.0",
+    "description": "Simple ECharts SSR renderer",
+    "main": "render_echarts.js",
+    "dependencies": {
+        "echarts": "^5.6.0"
+    }
+}

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chart Testing Framework - WASM</title>
+    <base href="/" />
+
+    <!-- ECharts + ECharts-GL (WebGL) -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js"></script>
+
+    <!-- Deck.gl + MapLibre (WebGL) -->
+    <script src="https://unpkg.com/deck.gl@8.9.33/dist.min.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+
+    <!-- Syncfusion CSS and JS -->
+    <link href="https://cdn.syncfusion.com/ej2/23.1.36/ej2-base/styles/material-dark.css" rel="stylesheet" />
+    <link href="https://cdn.syncfusion.com/ej2/23.1.36/ej2-charts/styles/material-dark.css" rel="stylesheet" />
+    <script src="https://cdn.syncfusion.com/ej2/23.1.36/dist/ej2.min.js"></script>
+
+    <!-- Custom styles -->
+    <link href="css/app.css" rel="stylesheet" />
+</head>
+
+<body>
+    <div id="app">
+        <div
+            style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 100%);">
+            <div
+                style="width: 60px; height: 60px; border: 4px solid #3d3d6b; border-top-color: #10b981; border-radius: 50%; animation: spin 1s linear infinite;">
+            </div>
+            <p style="margin-top: 1rem; color: #a0a0c0; font-family: system-ui;">Loading Chart Testing Framework
+                (WASM)...</p>
+        </div>
+    </div>
+
+    <style>
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+
+    <div id="blazor-error-ui"
+        style="display: none; background: #ef4444; bottom: 0; left: 0; padding: 0.6rem 1.25rem; position: fixed; width: 100%; z-index: 1000;">
+        An unhandled error has occurred.
+        <a href="" class="reload" style="color: white;">Reload</a>
+        <a class="dismiss" style="position: absolute; right: 0.75rem; top: 0.5rem; cursor: pointer;">🗙</a>
+    </div>
+
+    <script src="_framework/blazor.webassembly.js"></script>
+    <script src="js/chartInterop.js"></script>
+</body>
+
+</html>
