@@ -15,15 +15,15 @@ The solution maps a modern full-stack application data flow:
 
 ```mermaid
 graph TD
-    User[User @ Browser] <--> Blazor[Blazor Server / WASM]
-    Blazor <--> API[FastAPI Backend]
-    API <--> DataGen[Data Generator]
+    User["User @ Browser"] <--> Blazor["Blazor Server / WASM"]
+    Blazor <--> API["FastAPI Backend"]
+    API <--> DataGen["Data Generator"]
     
     subgraph Rendering Strategies
-        ClientJS[Client JS (ECharts/Syncfusion)]
-        GPU[GPU WebGL (Deck.gl/ECharts-GL)]
-        NetSSR[.NET Server Image (ScottPlot/SkiaSharp)]
-        NodeSSR[Node.js SSR (ECharts SVG)]
+        ClientJS["Client JS (ECharts/Syncfusion)"]
+        GPU["GPU WebGL (Deck.gl/ECharts-GL)"]
+        NetSSR[".NET Server Image (ScottPlot/SkiaSharp)"]
+        NodeSSR["Node.js SSR (ECharts SVG)"]
     end
     
     Blazor --> ClientJS
