@@ -1,6 +1,6 @@
 # 📊 Massive Data Charting Framework
 
-A hybrid, high-performance charting framework designed to benchmark and visualize massive datasets (up to 1M+ points) using various rendering strategies.
+A hybrid, high-performance charting framework designed to benchmark and visualize massive datasets (up to 1M+ points) using various rendering strategies. 
 
 ## 🚀 Key Features
 
